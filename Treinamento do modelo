@@ -1,0 +1,141 @@
+#Todas as importações nocessárias para o treinamento
+
+import os
+import cv2
+import numpy as np
+import random
+import sys
+
+from matplotlib import pyplot as plt
+
+from tensorflow.python import keras
+from tensorflow.python.keras.models import Model, Sequential
+from tensorflow.python.keras.layers.core import Dense
+from tensorflow.python.keras.engine.input_layer import Input
+from tensorflow.python.keras.layers.core import Dropout
+from tensorflow.python.keras.layers.pooling import MaxPooling2D
+from tensorflow.python.keras.layers.convolutional import Conv2D
+from tensorflow.python.keras.layers.merge import Concatenate
+from tensorflow.python.keras.layers.embeddings import Embedding
+from tensorflow.python.keras.layers.core import Reshape
+from tensorflow.python.keras.layers.core import Flatten
+from tensorflow.python.keras.layers.core import Activation
+from tensorflow.python.keras.callbacks import EarlyStopping
+
+from tensorflow.python.keras.optimizers import *
+from tensorflow.python.keras import regularizers
+from tensorflow.python.keras.optimizers import *
+
+
+from keras.preprocessing import image
+import keras.utils as image
+
+from tensorflow.python.keras.engine.base_preprocessing_layer import *
+
+
+HEIGHT = 120
+WIDTH = 380
+
+MAX_STEER_DEGREES = 40
+# Defina o caminho onde você realizou o salvamento das imagens para serem treinadas
+data_dir = 'C:\CARLA\carla\PythonAPI\examples\img_70k'
+
+# Definindo os parametros para o preprocessamento da imagem
+batch_size = 32
+image_size = (WIDTH,HEIGHT)
+
+
+# Define the position of the label in the image file name
+label_position = -5  
+
+# Criando o gerador de dados
+def custom_data_generator(image_files, batch_size):
+    num_samples = len(image_files)
+    while True:
+        indices = np.random.randint(0, num_samples, batch_size)
+        batch_images = []
+        batch_input_2 = []
+        batch_labels = []
+        for idx in indices:
+            image_path = image_files[idx]
+            label = float(os.path.basename(image_path).split('.png')[0].split('_')[2])
+            if label > MAX_STEER_DEGREES:
+                label = MAX_STEER_DEGREES
+            elif label < -MAX_STEER_DEGREES:
+                label = -MAX_STEER_DEGREES
+            label = float(label)/MAX_STEER_DEGREES
+            input_2 = int(os.path.basename(image_path).split('.png')[0].split('_')[1])
+            image = preprocess_image(image_path)
+            batch_images.append(image)
+            batch_input_2.append(input_2)
+            batch_labels.append(label)
+        yield [np.array(batch_images), np.array(batch_input_2)], np.array(batch_labels)
+
+# Etapa de preprocessamento
+
+
+def preprocess_image(image_path):
+    img = image.load_img(image_path, target_size=(HEIGHT, WIDTH))
+    img_array = image.img_to_array(img)
+    img_array = img_array / 255.0
+    return img_array
+
+
+def create_model():
+    # Input da imagem
+    image_input = Input(shape=(HEIGHT, WIDTH, 3))
+    
+    integer_input = Input(shape=(1,))
+    # Preprocessando os inputs da imagem
+    x = Conv2D(64, kernel_size=(3, 3), activation='relu',padding='same')(image_input)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(64, kernel_size=(3, 3), activation='relu',padding='same')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(64, kernel_size=(3, 3), activation='relu',padding='same')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Conv2D(64, kernel_size=(3, 3), activation='relu',padding='same')(x)
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+    x = Flatten()(x)
+    x = Dense(128, activation='relu',activity_regularizer=regularizers.L2(1e-5))(x)
+    x = Dropout(0.2)(x)
+    x = Dense(4, activation='relu',activity_regularizer=regularizers.L2(1e-5))(x)
+    
+    # Concatenando as características da imagem 
+    concatenated_inputs = Concatenate()([x, integer_input])
+    # Camadas de previsão - Dense
+    output = Dense(1, activation='linear')(concatenated_inputs)
+    # Criando o modelo
+    model = Model(inputs=[image_input, integer_input], outputs=output)
+    return model
+
+
+
+# Obtendo uma lista de caminhos e rótulos de arquivos da imagem
+image_files = [os.path.join(data_dir, file) for file in os.listdir(data_dir) if file.endswith('.png')]
+
+random.shuffle(image_files)
+
+# Divida os dados em conjuntos de treinamento e validação
+split_index = int(len(image_files) * 0.7)  # 80% para treinamento, 20% para validação - como premissa de treinamento 
+train_files, val_files = image_files[:split_index], image_files[split_index:]
+
+# Crie geradores de dados para treinamento e validação
+train_generator = custom_data_generator(train_files, batch_size)
+val_generator = custom_data_generator(val_files, batch_size)
+
+model = create_model()
+model.summary()
+model.compile(loss='MSE',
+              optimizer='adam')
+
+# Adicionando Early Stopping
+early_stopping = EarlyStopping(monitor='val_loss', patience=3, verbose=1, restore_best_weights=True)
+
+# Treinando o modelo
+history = model.fit(train_generator, steps_per_epoch=len(train_files) // batch_size, epochs=15,
+          validation_data=val_generator, validation_steps=len(val_files) // batch_size, callbacks=[early_stopping])
+
+# Salvando o modelo treinado
+
+model.save("C:\CARLA\carla\PythonAPI\examples\Modelo70K_2", overwrite=True,include_optimizer=True,
+    save_format=None, signatures=None, options=None, save_traces=True) # Lembre-se de salvar no edereço correto em sua máquina
