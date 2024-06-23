@@ -356,6 +356,8 @@ plt.plot(gps_path[:, 0], gps_path[:, 1], label='Rota GPS', marker='o')
 plt.plot(car_path[:, 0], car_path[:, 1], label='Caminho Carro', marker='x')
 plt.legend()
 plt.title('Comparação de Rotas')
+plt.xlabel('Longitude')
+plt.ylabel('Latitude')
 
 plt.subplot(1, 2, 2)
 plt.plot(distances, marker='o')
