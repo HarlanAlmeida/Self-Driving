@@ -3,7 +3,6 @@
 
 #Todas as importações nocessárias para a captura de imagem
 
-#all imports
 import glob
 import os
 import carla #biblioteca do Carla
@@ -39,6 +38,7 @@ YAW_ADJ_DEGREES = 15 #ângulo de rotação aleatório máximo
 def camera_callback(image,data_dict):
     data_dict['image'] = np.reshape(np.copy(image.raw_data),(image.height,image.width,4))[:, :, :3]
 def sem_callback(image,data_dict):
+
     ##########  Câmera de visão semantica ##############
     image.convert(carla.ColorConverter.CityScapesPalette)
     data_dict['sem_image'] = np.reshape(np.copy(image.raw_data),(image.height,image.width,4))[:, :, :3]
@@ -51,10 +51,7 @@ def cleanup():
 
 # função para obter o ângulo entre o carro e a rota traçada
 def get_angle(car,wp):
-    '''
-    this function returns degrees between the car's direction 
-    and direction to a selected waypoint
-    '''
+
     vehicle_pos = car.get_transform()
     car_x = vehicle_pos.location.x
     car_y = vehicle_pos.location.y
