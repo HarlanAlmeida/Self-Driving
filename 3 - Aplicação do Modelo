@@ -1,6 +1,6 @@
 # Aplicação do modelo - É importante que seja rodado na versão 9.13 do Carla
 
-#all imports
+#todas as importações
 import glob
 import os
 import carla #biblioteca do Carla
@@ -30,16 +30,16 @@ from tensorflow.python.keras.models import model_from_json
 PREFERRED_SPEED = 30
 SPEED_THRESHOLD = 2 #defines when we get close to desired speed so we drop the
 
-# Max steering angle
+# Max. ângulo de esterçamento
 MAX_STEER_DEGREES = 40
-# This is max actual angle with Mini under steering input=1.0
+
 STEERING_CONVERSION = 75
 
 CAMERA_POS_Z = 1.3 
 CAMERA_POS_X = 1.4 
 
-# resize images before running thgem through the model
-# this is the same as when yo train the model
+#Lembrar de reajustar imagens antes de rodar o programa
+
 HEIGHT = 120
 WIDTH = 380
 
@@ -62,7 +62,7 @@ def select_route(start_point, end_point, max_distance=1000):
     if route_distance <= max_distance:
             return route
     return None
-# maintain speed function
+# função para manter a velocidade constante
 def maintain_speed(s):
     ''' 
     this is a very simple function to maintan desired speed
@@ -74,7 +74,7 @@ def maintain_speed(s):
         return 0.9 # think of it as % of "full gas"
     else:
         return 0.4 # tweak this if the car is way over or under preferred speed
-# function to get angle between the car and target waypoint
+
 def get_angle(car,wp):
     '''
     this function returns degrees between the car's direction 
@@ -86,11 +86,11 @@ def get_angle(car,wp):
     wp_x = wp.transform.location.x
     wp_y = wp.transform.location.y
     
-    # vector to waypoint
+    
     x = (wp_x - car_x)/((wp_y - car_y)**2 + (wp_x - car_x)**2)**0.5
     y = (wp_y - car_y)/((wp_y - car_y)**2 + (wp_x - car_x)**2)**0.5
     
-    #car vector
+   
     car_vector = vehicle_pos.get_forward_vector()
     degrees = math.degrees(np.arctan2(y, x) - np.arctan2(car_vector.y, car_vector.x))
     # extra checks on predicted angle when values close to 360 degrees are returned
@@ -99,13 +99,8 @@ def get_angle(car,wp):
     elif degrees > 180:
         degrees = degrees - 360
     return degrees
-def get_proper_angle(car,wp_idx,rte):
-    '''
-    This function uses simple fuction above to get angle but for current
-    waypoint and a few more next waypoints to ensure we have not skipped
-    next waypoint so we avoid the car trying to turn back
-    '''
-    # create a list of angles to next 5 waypoints starting with current
+def get_proper_angle(car,wp_idx,rte):    
+  
     next_angle_list = []
     for i in range(10):
         if wp_idx + i*3 <len(rte)-1:
@@ -115,19 +110,12 @@ def get_proper_angle(car,wp_idx,rte):
         idx +=1
     return wp_idx+idx*3,next_angle_list[idx] 
 def get_distant_angle(car,wp_idx,rte, delta):
-    '''
-    This function modifies the fuction above to get angle to a waypoint
-    at a distance so we could use it for training image generation
     
-    We will display the angle for now in the 'telemetry' view so
-    we could play with how far forward we need to pick the waypoint
-    '''
     if wp_idx + delta < len(rte)-1:
         i = wp_idx + delta
     else:
         i = len(rte)-1
-    # check for intersection within the "look forward"
-    # so we do not give turn results when just following the road
+    # checando cruzamentos na via
     intersection_detected = False
     for x in range(i-wp_idx):
         if rte[wp_idx+x][0].is_junction:
@@ -143,7 +131,7 @@ def get_distant_angle(car,wp_idx,rte, delta):
         result = 0    
     return result
 def predict_angle(sem_im,direction):
-    # tweaks for prediction
+    
     img = np.float32(sem_im)
     img = img /255
     img = np.expand_dims(img, axis=0)
@@ -168,13 +156,12 @@ def gps_callback(data):
         longitude_list.append(longitude)
 
 
-# utility function for camera listening 
+# Função para câmera semântica 
 def sem_callback(image,data_dict):
     image.convert(carla.ColorConverter.CityScapesPalette)
     data_dict['sem_image'] = np.reshape(np.copy(image.raw_data),(image.height,image.width,4))[:, :, :3]
 def draw_route(wp, route,seconds=3.0):
-    #draw the next few points route in sim window - Note it does not
-    # get into the camera of the car
+    
     if len(route)-wp <25: # route within 25 points from end is red
         draw_colour = carla.Color(r=255, g=0, b=0)
     else:
@@ -203,19 +190,21 @@ client.set_timeout(5)
 client.load_world('Town03')
 
 client = carla.Client('localhost', 2000)
-# start a car
+
+# Iniciar carro no ambiente
 world = client.get_world()
 
 # Obtenha a biblioteca de plantas e os pontos de desova para o mapa
 bp_lib = world.get_blueprint_library() 
 spawn_points = world.get_map().get_spawn_points()
 
-#clean up
+# Limpar tudo
 for actor in world.get_actors().filter('*vehicle*'):
     actor.destroy()
     
 # Informaçoes do mapa
 map = world.get_map() # Informaçoes do mapa 
+
 ## Adiciona o veiculo
 
 # Obtenha a planta do veículo que você deseja
@@ -254,7 +243,7 @@ b = spawn_points[22].location
 
 w1 = grp.trace_route(a, b) # Refencia 
 
-# Plot route
+# Plotar rota
 x = [i[0].transform.location.x for i in w1]
 y = [i[0].transform.location.y for i in w1]
 plt.plot(y, x)
@@ -268,7 +257,6 @@ plt.legend()
 plt.grid()
 plt.show()
 
-# now let' pick the longest possible route
 distance = 0
 for loc in spawn_points: # we start trying all spawn points 
                             #but we just exclude first at zero index
@@ -276,9 +264,10 @@ for loc in spawn_points: # we start trying all spawn points
     if len(cur_route)>distance:
         distance = len(cur_route)
         route = cur_route
-#setting RGB Camera - this follow the approach explained in a Carla video
+
+# Definindo câmera RGB
 camera_bp = world.get_blueprint_library().find('sensor.camera.rgb')
-camera_bp.set_attribute('image_size_x', '640') # this ratio works in CARLA 9.14 on Windows
+camera_bp.set_attribute('image_size_x', '640') 
 camera_bp.set_attribute('image_size_y', '360')
 camera_init_trans = carla.Transform(carla.Location(z=CAMERA_POS_Z,x=CAMERA_POS_X))
 #this creates the camera in the sim
@@ -300,7 +289,7 @@ image_h = 360
 camera_data = {'sem_image': np.zeros((image_h,image_w,4)),
                'image': np.zeros((image_h,image_w,4))}
 
-# this actually opens a live stream from the camera
+# Abrindo a câmera acoplada na visão do motorista
 camera.listen(lambda image: camera_callback(image,camera_data))
 camera_sem.listen(lambda image: sem_callback(image,camera_data))
 cv2.namedWindow('RGB Camera',cv2.WINDOW_AUTOSIZE)
@@ -311,19 +300,18 @@ sem_image = camera_data['sem_image']
         
 sem_image = cv2.resize(sem_image, (WIDTH,HEIGHT))
 
-#main loop
+#loop principal
 model = load_model(MODEL_NAME,compile=False)
 model.compile()
 quit= False 
 
-curr_wp = 5 #we will be tracking waypoints in the route and switch to next one wen we get close to current one
+curr_wp = 5 
 predicted_angle = 0
-PREFERRED_SPEED = 30 # setting speed at start of new route
+PREFERRED_SPEED = 30
 
 while curr_wp < len(route) - 1:
     # Carla Tick
     world.tick()
-    #draw_route(curr_wp, route, 1)
 
     # Verifique se a tecla 'q' foi pressionada para sair
     if cv2.waitKey(1) == ord('q'):
@@ -337,8 +325,8 @@ while curr_wp < len(route) - 1:
     sem_image = cv2.resize(sem_image, (WIDTH, HEIGHT))
 
     # Verifique se o veículo está perto do final da rota
-    if curr_wp >= len(route) - 10:  # within 10 points of end, the route is done
-        PREFERRED_SPEED = 0  # setting speed to 0 after completing one route
+    if curr_wp >= len(route) - 10:  
+        PREFERRED_SPEED = 0  
         exit_clean()
         break
 
