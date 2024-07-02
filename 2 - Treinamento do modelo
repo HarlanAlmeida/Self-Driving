@@ -45,7 +45,7 @@ batch_size = 32
 image_size = (WIDTH,HEIGHT)
 
 
-# Define the position of the label in the image file name
+# defina a posição do rótulo no nome do arquivo de imagem
 label_position = -5  
 
 # Criando o gerador de dados
